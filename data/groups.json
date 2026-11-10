@@ -1,0 +1,93 @@
+{
+  "sleeves": {
+    "stock": [
+      "SPY",
+      "VEA",
+      "VWO",
+      "VNQ"
+    ],
+    "bond": [
+      "AGG",
+      "TLT",
+      "TIP"
+    ]
+  },
+  "groups": [
+    {
+      "id": 0,
+      "share": 9,
+      "name": "Young and Stretched",
+      "description": "Around 39, with more debt than they have built up in assets.",
+      "stock": 50,
+      "bond": 10,
+      "cash": 40,
+      "etfs": [
+        "SPY",
+        "AGG"
+      ],
+      "why": "Cash buffer first, with low-cost stock exposure as they build up."
+    },
+    {
+      "id": 1,
+      "share": 29,
+      "name": "Cautious Near-Retirees",
+      "description": "Around 60, modest income, very little cash, and no appetite for risk.",
+      "stock": 25,
+      "bond": 55,
+      "cash": 20,
+      "etfs": [
+        "AGG",
+        "TIP",
+        "SPY"
+      ],
+      "why": "Protects what they have and guards against inflation."
+    },
+    {
+      "id": 2,
+      "share": 9,
+      "name": "Established Retirees",
+      "description": "Around 70, wealthy, lots of cash, and no debt.",
+      "stock": 40,
+      "bond": 45,
+      "cash": 15,
+      "etfs": [
+        "SPY",
+        "AGG",
+        "TLT",
+        "VNQ"
+      ],
+      "why": "Preserves wealth and takes income from bonds."
+    },
+    {
+      "id": 3,
+      "share": 25,
+      "name": "Growing While Paying Debt",
+      "description": "Around 50, high income, mostly stocks, and heavy debt.",
+      "stock": 70,
+      "bond": 20,
+      "cash": 10,
+      "etfs": [
+        "SPY",
+        "VEA",
+        "VWO",
+        "AGG"
+      ],
+      "why": "Already growth-heavy, so the mix adds diversification abroad and a bond cushion."
+    },
+    {
+      "id": 4,
+      "share": 28,
+      "name": "Ready but Uninvested",
+      "description": "Around 45, solid income, willing to take risk, but almost none of it in stocks.",
+      "stock": 70,
+      "bond": 20,
+      "cash": 10,
+      "etfs": [
+        "SPY",
+        "VEA",
+        "AGG"
+      ],
+      "why": "Their comfort with risk matches a stock-heavy start."
+    }
+  ]
+}
