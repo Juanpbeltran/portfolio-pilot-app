@@ -10,13 +10,31 @@ const PAD = { left: 44, right: 10, top: 10, bottom: 26 };
 
 const data = history.groups as unknown as Record<string, Series | undefined>;
 
-export function HistoryChart({ groupId }: { groupId: GroupId }) {
+// Tiny line for the deck tile: only the shape, no labels.
+export function Spark({ groupId }: { groupId: GroupId }) {
+  const mine = data[String(groupId)];
+  if (!mine || mine.points.length < 2) return null;
+  const values = mine.points.map((p) => p.value);
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const step = 100 / (values.length - 1);
+  const d = values.map((v, i) => `${i ? "L" : "M"}${(i * step).toFixed(1)},${(30 - ((v - lo) / (hi - lo)) * 28 - 1).toFixed(1)}`).join("");
+  return (
+    <svg className="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+}
+
+export function HistoryChart({ groupId, headingRef }: { groupId: GroupId; headingRef?: React.Ref<HTMLHeadingElement> }) {
   const mine = data[String(groupId)];
 
   if (!mine || mine.points.length < 2) {
     return (
       <section className="history" aria-label="Past results">
-        <h2 className="section">How this mix did in the past</h2>
+        <h1 className="card-title" tabIndex={-1} ref={headingRef}>
+          How this mix did in the past
+        </h1>
         <p className="history-note">The chart is not available right now. Everything else on this page still applies.</p>
       </section>
     );
@@ -43,7 +61,9 @@ export function HistoryChart({ groupId }: { groupId: GroupId }) {
 
   return (
     <section className="history" aria-label="How this mix did in the past">
-      <h2 className="section">How this mix did in the past</h2>
+      <h1 className="card-title" tabIndex={-1} ref={headingRef}>
+        How this mix did in the past
+      </h1>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={summary}>
         {ticks.map((t) => (
           <g key={t}>
@@ -82,10 +102,7 @@ export function HistoryChart({ groupId }: { groupId: GroupId }) {
         </li>
       </ul>
       <p className="history-stats">
-        {summary}
-      </p>
-      <p className="history-note">
-        This is a look back at the sample mix, not a promise. The future may be different.
+        {summary} <span className="history-note">A look back, not a promise.</span>
       </p>
     </section>
   );

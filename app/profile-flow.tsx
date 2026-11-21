@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Brand } from "@/components/brand";
-import { GroupCard } from "@/components/group-card";
-import { HistoryChart } from "@/components/history-chart";
+import { Book } from "@/components/book";
+import { ResultDeck, type TopicId } from "@/components/result-deck";
+import { Splash } from "@/components/splash";
 import { Welcome } from "@/components/welcome";
-import { DEFINITIONS, FUNDS, QUESTIONS, RISK_TEXT, reasonsFor } from "@/lib/copy";
-import { DISCLAIMER, GROUPS, HOUSEHOLDS, groupById, type Risk } from "@/lib/groups";
+import { QUESTIONS, RISK_TEXT } from "@/lib/copy";
+import { HOUSEHOLDS, groupById, type Risk } from "@/lib/groups";
 import { matchHousehold } from "@/lib/match";
 
-type Screen = "welcome" | "quiz" | "result" | "compare";
+type Screen = "splash" | "welcome" | "quiz" | "result";
 
 type Draft = {
   age: string;
@@ -22,10 +23,6 @@ type Draft = {
 const EMPTY: Draft = { age: "", income: "", liquid: "", debt: "", risk: "" };
 const RISKS: Risk[] = ["low", "average", "high"];
 
-function money(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
-}
-
 // Returns an error message for one question, or "" when the answer is fine.
 function checkAnswer(key: (typeof QUESTIONS)[number]["key"], draft: Draft): string {
   if (key === "risk") return draft.risk ? "" : "Pick one of the three answers.";
@@ -37,50 +34,15 @@ function checkAnswer(key: (typeof QUESTIONS)[number]["key"], draft: Draft): stri
   return "";
 }
 
-function Allocation({ stock, bond, cash, compact = false }: { stock: number; bond: number; cash: number; compact?: boolean }) {
-  return (
-    <>
-      <div className={compact ? "bar mini-bar" : "bar"} aria-hidden="true">
-        <span style={{ width: `${stock}%` }} />
-        <span style={{ width: `${bond}%` }} />
-        <span style={{ width: `${cash}%` }} />
-      </div>
-      {compact ? null : (
-        <ul className="legend">
-          <li>
-            <strong>{stock}%</strong>
-            <span>
-              <i className="swatch stock" />
-              Stocks
-            </span>
-          </li>
-          <li>
-            <strong>{bond}%</strong>
-            <span>
-              <i className="swatch bond" />
-              Bonds
-            </span>
-          </li>
-          <li>
-            <strong>{cash}%</strong>
-            <span>
-              <i className="swatch cash" />
-              Cash
-            </span>
-          </li>
-        </ul>
-      )}
-    </>
-  );
-}
-
 export function ProfileFlow() {
-  const [screen, setScreen] = useState<Screen>("welcome");
+  const [screen, setScreen] = useState<Screen>("splash");
   const [index, setIndex] = useState(0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [preset, setPreset] = useState("");
   const [error, setError] = useState("");
   const [dev, setDev] = useState(false);
+  const [open, setOpen] = useState<TopicId | null>(null);
+  const [seen, setSeen] = useState<TopicId[]>([]);
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -92,6 +54,8 @@ export function ProfileFlow() {
     heading.current?.focus();
     window.scrollTo(0, 0);
   }, [screen, index]);
+
+  const finishIntro = useCallback(() => setScreen((current) => (current === "splash" ? "welcome" : current)), []);
 
   const question = QUESTIONS[index];
 
@@ -131,11 +95,30 @@ export function ProfileFlow() {
     setIndex(Math.max(0, index - 1));
   }
 
+  // Tapping the app name anywhere returns to the welcome page and clears the answers.
+  function goHome() {
+    setDraft(EMPTY);
+    setPreset("");
+    setError("");
+    setIndex(0);
+    setOpen(null);
+    setSeen([]);
+    setScreen("welcome");
+  }
+
   function startOver() {
     setDraft(EMPTY);
     setPreset("");
     setIndex(0);
+    setOpen(null);
+    setSeen([]);
     setScreen("quiz");
+  }
+
+  // Which card of the results is open (null = the deck of cards), and which ones have been opened.
+  function openTopic(topic: TopicId | null) {
+    setOpen(topic);
+    if (topic) setSeen((list) => (list.includes(topic) ? list : [...list, topic]));
   }
 
   const complete = QUESTIONS.every((q) => !checkAnswer(q.key, draft));
@@ -145,9 +128,17 @@ export function ProfileFlow() {
   const match = answers ? matchHousehold(answers) : null;
   const group = match ? groupById(match.household.group) : null;
 
+  if (screen === "splash") return <Splash onDone={finishIntro} />;
+
+  // Pages turn like a book from the welcome through the quiz and into the results.
+  // Inside the results (the deck and its cards) there is no page turn: the cards have their own animation.
+  const pageKey = screen === "quiz" ? `quiz-${index}` : screen;
+  const rank = screen === "welcome" ? 0 : screen === "quiz" ? 1 + index : 10;
+
   return (
+    <Book pageKey={pageKey} rank={rank}>
     <main className="app">
-      {screen !== "welcome" ? <Brand /> : null}
+      {screen !== "welcome" ? <Brand onHome={goHome} /> : null}
 
       {screen === "welcome" ? <Welcome onStart={() => setScreen("quiz")} /> : null}
 
@@ -272,108 +263,10 @@ export function ProfileFlow() {
         </form>
       ) : null}
 
-      {screen !== "quiz" && group && match && answers ? (
-        screen === "result" ? (
-          <>
-            <p className="disclaimer top">{DISCLAIMER} It shows an example, not a plan for you.</p>
-            <GroupCard group={group} headingRef={heading} />
-            {match.far ? (
-              <p className="warning" role="note">
-                Your answers are unlike all our examples, so treat this group as a rough guess.
-              </p>
-            ) : null}
-
-            <h2 className="section">A sample mix</h2>
-            <Allocation stock={group.stock} bond={group.bond} cash={group.cash} />
-            <details className="words">
-              <summary>What do these words mean?</summary>
-              <dl>
-                {DEFINITIONS.map((item) => (
-                  <div key={item.term}>
-                    <dt>{item.term}</dt>
-                    <dd>{item.text}</dd>
-                  </div>
-                ))}
-              </dl>
-            </details>
-
-            <h2 className="section">Why this mix</h2>
-            <p className="because">Because you told us:</p>
-            <ul className="reasons">
-              {reasonsFor(answers).map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
-            </ul>
-            <p className="why">{group.why}</p>
-
-            <h2 className="section">What it is made of</h2>
-            <ul className="funds">
-              {group.etfs.map((ticker) => (
-                <li key={ticker}>
-                  <strong>{ticker}</strong>
-                  <span>{FUNDS[ticker]}</span>
-                </li>
-              ))}
-            </ul>
-
-            <HistoryChart groupId={group.id} />
-
-            <p className="summary">
-              Your answers: age {answers.age}, income {money(answers.income)}, savings {money(answers.liquid)}, debt {money(answers.debt)},{" "}
-              {RISK_TEXT[answers.risk].label.toLowerCase()} comfort with ups and downs.
-            </p>
-            {dev ? (
-              <p className="stand-in">
-                Dev note: {match.distance === 0 ? "matches" : "closest to"} example household {match.household.id}. Stand-in until the trained model is
-                connected.
-              </p>
-            ) : null}
-            <p className="disclaimer">{DISCLAIMER}</p>
-
-            <div className="sticky">
-              <p className="next-hint">Next: see how the other four groups differ.</p>
-              <button className="primary" type="button" onClick={() => setScreen("compare")}>
-                Compare groups
-              </button>
-            </div>
-            <button className="secondary" type="button" onClick={startOver}>
-              Change my answers
-            </button>
-          </>
-        ) : (
-          <>
-            <h1 className="lede" tabIndex={-1} ref={heading}>
-              You are in: {group.name}
-            </h1>
-            <p className="hint">The other four groups are below. Each shows its sample mix.</p>
-            <ul className="compare-list">
-              {[group, ...GROUPS.filter((item) => item.id !== group.id)].map((item) => (
-                <li key={item.id}>
-                  <article className={item.id === group.id ? "yours" : undefined}>
-                    <h2>{item.name}</h2>
-                    {item.id === group.id ? <span className="yours-tag">Your group</span> : null}
-                    <p>{item.description}</p>
-                    <Allocation stock={item.stock} bond={item.bond} cash={item.cash} compact />
-                    <p>
-                      Stocks {item.stock}%, bonds {item.bond}%, cash {item.cash}%.
-                    </p>
-                    <p>Funds: {item.etfs.join(", ")}.</p>
-                  </article>
-                </li>
-              ))}
-            </ul>
-            <p className="disclaimer">{DISCLAIMER}</p>
-            <div className="sticky">
-              <button className="primary" type="button" onClick={() => setScreen("result")}>
-                Back to my mix
-              </button>
-            </div>
-            <button className="secondary" type="button" onClick={startOver}>
-              Start over
-            </button>
-          </>
-        )
+      {screen === "result" && group && match && answers ? (
+        <ResultDeck group={group} answers={answers} match={match} dev={dev} open={open} seen={seen} onOpen={openTopic} onChange={startOver} />
       ) : null}
     </main>
+    </Book>
   );
 }
